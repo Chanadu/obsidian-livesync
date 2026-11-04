@@ -102,12 +102,9 @@ export async function checkIncompleteDocuments(
             const recordedSize = doc.size;
             const docBlob = readAsBlob(doc);
             const actualSize = docBlob.size;
-            if (
-                recordedSize !== actualSize ||
-                sizeOnStorage !== actualSize ||
-                sizeOnStorage !== recordedSize ||
-                isConflicted
-            ) {
+            // Pending edits and reflection can differ from a healthy database.
+            // Conflicts belong to the normal resolver, not this corruption scan.
+            if (recordedSize !== actualSize) {
                 let storageFileContent;
                 try {
                     storageFileContent = await dependencies.storageAccess.readHiddenFileBinary(path);
@@ -117,10 +114,6 @@ export async function checkIncompleteDocuments(
                     continue;
                 }
                 sizeOnStorage = storageFileContent.byteLength;
-                // The file may have changed since stat, so recheck using the bytes read.
-                if (recordedSize === actualSize && sizeOnStorage === actualSize && !isConflicted) {
-                    continue;
-                }
                 const contentMatched = await isDocContentSame(doc.data, storageFileContent);
                 errorFiles.push({
                     path,

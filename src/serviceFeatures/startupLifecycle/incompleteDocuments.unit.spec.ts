@@ -182,21 +182,21 @@ describe("checkIncompleteDocuments", () => {
         expect(fixture.dependencies.keyValueDB.set).not.toHaveBeenCalled();
     });
 
-    it("does not offer repair when all sizes agree after reading storage", async () => {
+    it("does not offer repair when a healthy database differs from the initial storage stat", async () => {
         const healthy = documentFixture("settled.md", { storageContent: "abc" });
         const fixture = createDependencies(documentsFrom([healthy]), [healthy]);
-        vi.mocked(fixture.dependencies.storageAccess.statHidden).mockResolvedValueOnce({ ...healthy.stub.stat, size: 4 });
+        vi.mocked(fixture.dependencies.storageAccess.statHidden).mockResolvedValue({ ...healthy.stub.stat, size: 4 });
 
         await expect(checkIncompleteDocuments(fixture.dependencies)).resolves.toBe(true);
 
-        expect(fixture.readHiddenFileBinary).toHaveBeenCalledWith("settled.md");
+        expect(fixture.readHiddenFileBinary).not.toHaveBeenCalled();
         expect(fixture.askSelectStringDialogue).not.toHaveBeenCalled();
         expect(fixture.storeFileToDB).not.toHaveBeenCalled();
         expect(fixture.dependencies.keyValueDB.set).toHaveBeenCalledWith("checkIncompleteDocs", true);
     });
 
     it("uses the bytes read from storage when a size mismatch remains", async () => {
-        const mismatched = documentFixture("changing.md", { recordedSize: 3, storageContent: "abcde" });
+        const mismatched = documentFixture("changing.md", { recordedSize: 4, storageContent: "abcde" });
         const fixture = createDependencies(documentsFrom([mismatched]), [mismatched]);
         vi.mocked(fixture.dependencies.storageAccess.statHidden).mockResolvedValueOnce({
             ...mismatched.stub.stat,
@@ -209,21 +209,31 @@ describe("checkIncompleteDocuments", () => {
         expect(fixture.readHiddenFileBinary).toHaveBeenCalledWith("changing.md");
         expect(fixture.askSelectStringDialogue).toHaveBeenCalledOnce();
         expect(fixture.askSelectStringDialogue.mock.calls[0]?.[0]).toEqual(
-            expect.stringContaining("changing.md (M: 3, A: 3, S: 5)")
+            expect.stringContaining("changing.md (M: 4, A: 3, S: 5)")
         );
         expect(fixture.storeFileToDB).not.toHaveBeenCalled();
         expect(fixture.dependencies.keyValueDB.set).not.toHaveBeenCalled();
     });
 
-    it("still reads conflicted storage for the existing repair dialogue", async () => {
+    it("leaves healthy database conflicts to normal conflict resolution", async () => {
         const conflicted = documentFixture("conflicted.md", { storageContent: "abc", conflicts: ["2-other"] });
         const fixture = createDependencies(documentsFrom([conflicted]), [conflicted]);
         fixture.askSelectStringDialogue.mockImplementation(selectButton(0));
 
         await expect(checkIncompleteDocuments(fixture.dependencies)).resolves.toBe(true);
 
-        expect(fixture.readHiddenFileBinary).toHaveBeenCalledWith("conflicted.md");
-        expect(fixture.dependencies.keyValueDB.set).not.toHaveBeenCalled();
+        expect(fixture.readHiddenFileBinary).not.toHaveBeenCalled();
+        expect(fixture.askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(fixture.storeFileToDB).not.toHaveBeenCalled();
+    });
+
+    it.each([1792, 1806])("does not classify a pending storage edit of %i bytes as corruption", async (size) => {
+        const edited = documentFixture("Music.md", { recordedSize: 1799, storageContent: "x".repeat(size) });
+        edited.loaded.data = "x".repeat(1799);
+        const fixture = createDependencies(documentsFrom([edited]), [edited]);
+        await expect(checkIncompleteDocuments(fixture.dependencies)).resolves.toBe(true);
+        expect(fixture.askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(fixture.storeFileToDB).not.toHaveBeenCalled();
     });
 
     it("repairs a recoverable document when FIX is selected", async () => {
