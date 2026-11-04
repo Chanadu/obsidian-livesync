@@ -19,6 +19,17 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
     - Hebrew interface messages also display their referenced labels correctly.
 
+## 1.0.44-chanadu.1
+
+4th November, 2026
+
+### Personal fork: automatic Markdown resolution
+
+- Merge independent Markdown edits and choose the newer revision's text only inside overlapping token regions when the experimental fork option is enabled.
+- Keep original file modification times and save both input versions locally before resolving a pair. Missing shared history falls back to the newer whole file.
+- Use the distinct `chanadu-livesync` plug-in ID and **LiveSync Automatic Merge** name. Install this fork on every synchronising device and disable other sync plug-ins in the same Vault.
+- Automated tests cover two-replica convergence; physical iOS, real Obsidian, and CouchDB runtime validation remain outstanding. See [the fork guide](FORK.md) for limits and recovery copies.
+
 ## 1.0.44
 
 1st November, 2026
