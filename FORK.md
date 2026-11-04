@@ -62,7 +62,7 @@ git tag 1.0.44-chanadu.4
 git push origin HEAD refs/tags/1.0.44-chanadu.4
 ```
 
-The `Publish Chanadu Plug-in Release` workflow validates the tag, plug-in identity, and release metadata, runs focused tests, builds the bundle, checks compatibility, and uploads `main.js`, `manifest.json`, and `styles.css`. It publishes only personal fork prereleases, without changing the latest stable release or publishing CLI images. Tag pushes run the workflow from the tagged commit; this does not require the workflow on the default branch. Existing upstream manual release workflows remain available. For this fork, the tag-triggered workflow is the publication route instead of the upstream manual finalisation process. Never move a published tag; prepare a new version for a correction.
+The `Publish Chanadu Plug-in Release` workflow validates the tag, plug-in identity, and release metadata, runs focused tests, builds the bundle, checks compatibility, and uploads `main.js`, `manifest.json`, and `styles.css`. It publishes only personal fork prereleases, without changing the latest stable release or publishing CLI images. The workflow is registered on this fork's default branch. Tag pushes build the tagged commit. Existing upstream manual release workflows remain available. For this fork, the tag-triggered workflow is the publication route instead of the upstream manual finalisation process. Never move a published tag; prepare a new version for a correction.
 
 In BRAT, select the new version if the plug-in was installed with a specific version. A pinned older version will not advance automatically. Verify installation, start-up, and bidirectional synchronisation on your devices after updating; publication alone does not establish those checks.
 
