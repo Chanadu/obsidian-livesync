@@ -387,6 +387,8 @@ This policy governs plug-in pre-releases and their accompanying CLI images. For 
 
 ## Release Workflow
 
+For Chanadu personal fork versions (`x.y.z-chanadu.N`), use [the automatic fork release process](FORK.md#automatic-releases-on-this-fork). Its tag-triggered workflow publishes a prerelease on `Chanadu/obsidian-livesync`; the manual upstream process below is retained for other releases.
+
 This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
 The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `release` GitHub Environment. Configure Environment protection in the repository settings so tag creation and release publication require maintainer approval.
 For a fix needed only by the CLI, use [CLI-only patch releases](#cli-only-patch-releases). The steps below describe plug-in releases.

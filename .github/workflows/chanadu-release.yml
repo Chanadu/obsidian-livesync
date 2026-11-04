@@ -1,0 +1,69 @@
+name: Publish Chanadu Plug-in Release
+
+on:
+  push:
+    tags:
+      - '*-chanadu.*'
+
+concurrency:
+  group: chanadu-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Chanadu/obsidian-livesync' && !endsWith(github.ref_name, '-cli')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+          cache: npm
+      - name: Validate tagged release and prepare notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const tag = process.env.RELEASE_TAG;
+          if (!/^\d+\.\d+\.\d+-chanadu\.\d+$/.test(tag)) {
+            throw new Error(`Invalid personal fork release tag: ${tag}`);
+          }
+          const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+          if (manifest.id !== 'chanadu-livesync') throw new Error('Unexpected plug-in ID');
+          const sections = readFileSync('updates.md', 'utf8').split(/^## /m);
+          const section = sections.find((value) => value.split('\n')[0].trim() === tag);
+          if (!section) throw new Error(`Missing release notes for ${tag}`);
+          writeFileSync('release-notes.md', `## ${section.trim()}\n`);
+          NODE
+          node utils/release-notes.mjs validate "$RELEASE_TAG"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+      - name: Install dependencies
+        run: npm ci
+      - name: Test repair scan and release tooling
+        run: npx vitest run --config vitest.config.unit.ts src/serviceFeatures/startupLifecycle/incompleteDocuments.unit.spec.ts utils/release-process.unit.spec.ts
+      - name: Build and verify compatibility
+        run: |
+          npm run build
+          npm run check:compatibility --ignore-scripts
+      - name: Publish prerelease and plug-in files
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: true
+          make_latest: 'false'
+          fail_on_unmatched_files: true
+          overwrite_files: false
+          files: |
+            main.js
+            manifest.json
+            styles.css
