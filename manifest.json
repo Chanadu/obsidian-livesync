@@ -1,10 +1,10 @@
 {
-    "id": "obsidian-livesync",
-    "name": "Self-hosted LiveSync",
+    "id": "chanadu-livesync",
+    "name": "LiveSync Automatic Merge",
     "version": "1.0.44",
     "minAppVersion": "1.7.2",
-    "description": "Community implementation of self-hosted livesync. Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
-    "author": "vorotamoroz",
-    "authorUrl": "https://github.com/vrtmrz",
+    "description": "Personal Self-hosted LiveSync fork that merges Markdown and automatically prefers newer text in overlapping edits.",
+    "author": "Chanadu; based on Self-hosted LiveSync by vorotamoroz",
+    "authorUrl": "https://github.com/Chanadu/obsidian-livesync",
     "isDesktopOnly": false
 }

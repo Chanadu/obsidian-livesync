@@ -1,5 +1,7 @@
 # Conflict resolution and revision provenance
 
+Fork note: Chanadu's opt-in Markdown policy differs from the upstream contract below. See [the fork guide](../FORK.md) for region selection, original timestamps, recovery copies, and outstanding runtime validation.
+
 This document describes the conflict-resolution and file-reflection guarantees used by Self-hosted LiveSync 1.0, together with the cases which still require user judgement. The underlying revision-tree operations and injectable provenance contract are owned by `@vrtmrz/livesync-commonlib`; LiveSync owns persistent device-local composition, Vault reflection, settings, and dialogue policy.
 
 ## Revision-tree model

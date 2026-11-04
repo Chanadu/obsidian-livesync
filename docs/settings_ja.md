@@ -331,6 +331,8 @@ Self-hosted LiveSyncは通常、フォルダ内のファイルがすべて削除
 備考:Self-hosted LiveSyncの同期対象はファイルです。
 
 ### Use newer file if conflicted (beta)
+
+Fork note: Chanadu's changed Markdown policy is documented in [the fork guide](../FORK.md). The upstream description below does not describe the fork's region-level merging.
 競合が発生したとき、常に新しいファイルを使用して競合を自動的に解決します。
 
 

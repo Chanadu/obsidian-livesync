@@ -202,7 +202,14 @@ export function paneSyncSettings(
         undefined,
         LEVEL_ADVANCED
     ).then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("resolveConflictsByNewerFile");
+        new Setting(paneEl)
+            .autoWireToggle("resolveConflictsByNewerFile")
+            .setName("(Experimental fork) merge Markdown; prefer newer text in overlaps")
+            .setDesc(
+                "Automatically merge Markdown edits and choose newer text only where edits overlap. " +
+                    "Uses file modification times. Without a readable shared base, keeps the newer file. " +
+                    "Other file types retain upstream behaviour. Saves local recovery copies."
+            );
 
         new Setting(paneEl).autoWireToggle("checkConflictOnlyOnOpen");
 

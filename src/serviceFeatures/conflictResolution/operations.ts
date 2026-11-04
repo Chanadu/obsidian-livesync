@@ -37,6 +37,7 @@ export type ConflictResolutionSettings = Pick<
 >;
 
 export interface ConflictResolutionOperationsDependencies {
+    readonly resolveRegions?: (path: FilePathWithPrefix) => Promise<diff_check_result>;
     readonly events: Pick<LiveSyncEventHub, "emitEvent">;
     readonly databaseFileAccess: Pick<DatabaseFileAccess, "fetchEntryMeta" | "getConflictedRevs" | "storeContent">;
     readonly fileHandler: Pick<IFileHandler, "deleteRevisionFromDB" | "dbToStorage">;
@@ -118,6 +119,19 @@ export function createConflictResolutionOperations(
     };
 
     const checkConflictAndPerformAutoMerge = async (path: FilePathWithPrefix): Promise<diff_check_result> => {
+        if (
+            dependencies.currentSettings().resolveConflictsByNewerFile &&
+            /\.md$/i.test(path) &&
+            dependencies.resolveRegions
+        ) {
+            try {
+                return await dependencies.resolveRegions(path);
+            } catch (error) {
+                dependencies.log(`Automatic region merge could not complete: ${path}`, LOG_LEVEL_NOTICE);
+                dependencies.log(error, LOG_LEVEL_VERBOSE);
+                return MISSING_OR_ERROR;
+            }
+        }
         const ret = await dependencies
             .localDatabase()
             .tryAutoMerge(path, !dependencies.currentSettings().disableMarkdownAutoMerge);

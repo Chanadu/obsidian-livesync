@@ -1,4 +1,7 @@
 # Self-hosted LiveSync
+
+This is Chanadu's experimental automatic-merge fork. Read [the fork guide](FORK.md) for its changed conflict policy, validation limits, installation, and Raspberry Pi setup. The upstream documentation below describes the original behaviour unless the fork guide says otherwise.
+
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
 Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.

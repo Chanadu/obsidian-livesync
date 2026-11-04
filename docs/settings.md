@@ -732,6 +732,8 @@ Conflict resolution preserves unknown local content and automatically merges onl
 
 #### (BETA) Always overwrite with a newer file
 
+Fork note: this control is labelled **(Experimental fork) merge Markdown; prefer newer text in overlaps** in Chanadu's fork. Its Markdown behaviour is documented in [the fork guide](../FORK.md). The following description records upstream behaviour.
+
 Setting key: resolveConflictsByNewerFile
 Testing only. Resolve file conflicts by selecting the copy with the newer modification time. This can overwrite modified files and cannot establish which revision reflects the user's intent.
 

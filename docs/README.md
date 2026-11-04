@@ -1,5 +1,7 @@
 # Documentation index
 
+For Chanadu's experimental automatic region-merge fork, start with [the fork guide](../FORK.md). Upstream contracts below remain historical references where the fork explicitly changes conflict policy.
+
 Choose a document by the task and its status. User guides describe supported operations; implementation references describe contracts and their limits; ADRs record why a decision was made. Proposals and historical designs are grouped separately below.
 
 A document's original date and reviewed-version fields describe its baseline. Read its implementation or publication note before treating that baseline as the current release. A published feature does not by itself establish that every proposal or validation step in its design is complete.

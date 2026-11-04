@@ -216,6 +216,8 @@ The [TURN connection settings design](docs/design_docs/renewable_turn_credential
 
 ### Conflict Merge Policy
 
+Fork note: the user explicitly selected automatic overlapping-text resolution for this personal fork. The opt-in exception and its verification boundaries are recorded in [the fork guide](FORK.md); the original upstream policy below remains the default when the option is disabled.
+
 Markdown conflict auto-merge should behave like a conservative three-way merge. The guiding rule is to merge changes when they touch non-overlapping regions, and to keep a manual conflict when the edits overlap semantically.
 
 When in doubt, prefer the safer outcome: preserve data, keep the conflict visible, and ask the user rather than silently discarding content or choosing one side.

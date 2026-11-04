@@ -217,6 +217,7 @@
         "idb": "^8.0.3",
         "markdown-it": "^14.3.3",
         "minimatch": "^10.2.5",
+        "node-diff3": "3.2.1",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "0.1.56",
         "qrcode-generator": "^1.4.4",

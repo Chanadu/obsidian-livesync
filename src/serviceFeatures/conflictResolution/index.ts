@@ -6,6 +6,7 @@ import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { createConflictCheckingHandlers } from "./checker";
 import { createConflictResolutionOperations } from "./operations";
+import { createAutomaticRegionResolver } from "./automaticRegionResolution";
 
 export type ConflictResolutionHost = NecessaryServices<
     "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault",
@@ -19,6 +20,13 @@ export type ConflictResolutionHost = NecessaryServices<
 export const useConflictResolutionFeature = createServiceFeature((host: ConflictResolutionHost): void => {
     const { services, serviceModules, log } = host;
     const operations = createConflictResolutionOperations({
+        resolveRegions: createAutomaticRegionResolver({
+            localDatabase: () => services.database.localDatabase,
+            databaseFileAccess: serviceModules.databaseFileAccess,
+            storageAccess: serviceModules.storageAccess,
+            resolveByDeletingRevision: (path, revision, reason) =>
+                services.conflict.resolveByDeletingRevision(path, revision, reason),
+        }),
         events: services.context.events,
         databaseFileAccess: serviceModules.databaseFileAccess,
         fileHandler: serviceModules.fileHandler,
