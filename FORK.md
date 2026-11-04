@@ -25,6 +25,8 @@ Keep Hidden File Sync and Customisation Sync disabled for the initial setup. If 
 
 ## Limits and validation
 
+Version `1.0.44-chanadu.2` fixes recovery-directory creation on fresh Vaults. Earlier builds can leave an otherwise readable conflict unresolved because the recovery file cannot be written. Update the fork, or create `.livesync-region-recovery` directly inside the Vault before retrying the conflict check. The regression test exercises Commonlib's actual directory helper against a temporary filesystem; it does not claim full Obsidian or iOS coverage.
+
 The supported development target is two personal devices: desktop and iOS. The token merge is syntactic; it does not understand Markdown meaning, YAML validity, or the intended meaning of a sentence. Device clock errors can select the wrong text. JSON, Canvas, binary attachments, and settings do not receive token-level merging.
 
 Multiple branches are processed oldest first among those currently visible. Pairwise three-way merging is not associative, and a merged file's timestamp cannot describe the age of each surviving word. Different subsets arriving at different times can therefore affect the result. Region-level operation timestamps or a CRDT would be required for stronger multi-branch guarantees. This fork does not claim those guarantees.

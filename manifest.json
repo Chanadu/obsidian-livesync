@@ -1,7 +1,7 @@
 {
     "id": "chanadu-livesync",
     "name": "LiveSync Automatic Merge",
-    "version": "1.0.44-chanadu.1",
+    "version": "1.0.44-chanadu.2",
     "minAppVersion": "1.7.2",
     "description": "Personal Self-hosted LiveSync fork that merges Markdown and automatically prefers newer text in overlapping edits.",
     "author": "Chanadu; based on Self-hosted LiveSync by vorotamoroz",

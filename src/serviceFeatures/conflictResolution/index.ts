@@ -21,6 +21,7 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
     const { services, serviceModules, log } = host;
     const operations = createConflictResolutionOperations({
         resolveRegions: createAutomaticRegionResolver({
+            log,
             localDatabase: () => services.database.localDatabase,
             databaseFileAccess: serviceModules.databaseFileAccess,
             storageAccess: serviceModules.storageAccess,

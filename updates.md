@@ -19,6 +19,17 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
     - Hebrew interface messages also display their referenced labels correctly.
 
+## 1.0.44-chanadu.2
+
+4th November, 2026
+
+### Fixed
+
+- Automatic Markdown resolution now creates its local recovery directory on a fresh Vault. The previous build passed a directory name to Commonlib's parent-directory helper, so the recovery write could fail and leave conflicts unresolved.
+    - Recovery copies remain required before removing a losing revision. No database reset is needed.
+    - A regression test uses Commonlib's actual directory helper and a temporary filesystem; it fails with the old call and passes with the corrected full file path.
+- Deferred region resolution now logs whether it stopped on missing content, backup failure, changed branches, or a failed merged write.
+
 ## 1.0.44-chanadu.1
 
 4th November, 2026

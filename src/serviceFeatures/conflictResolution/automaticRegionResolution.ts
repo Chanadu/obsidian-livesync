@@ -16,6 +16,7 @@ export const REGION_RECOVERY_DIRECTORY = ".livesync-region-recovery";
 export type RevisionMetadata = LoadedEntry & { _revs_info?: { rev: string; status: string }[] };
 
 export interface AutomaticRegionDependencies {
+    readonly log?: (message: string) => void;
     readonly localDatabase: () => Pick<LiveSyncLocalDB, "getDBEntryMeta" | "getDBEntry">;
     readonly databaseFileAccess: Pick<DatabaseFileAccess, "storeWithLiveBaseRevision">;
     readonly storageAccess: Pick<StorageAccess, "writeHiddenFileAuto" | "ensureDir">;
@@ -33,9 +34,13 @@ function deleted(entry: LoadedEntry): boolean {
 /** Fork-only policy. Read exact histories and write through the public Chunk APIs. */
 export function createAutomaticRegionResolver(dependencies: AutomaticRegionDependencies) {
     return async (path: FilePathWithPrefix): Promise<diff_check_result> => {
+        const fail = (reason: string): typeof MISSING_OR_ERROR => {
+            dependencies.log?.(`Automatic region merge deferred (${reason}): ${path}`);
+            return MISSING_OR_ERROR;
+        };
         const database = dependencies.localDatabase();
         const current = await database.getDBEntryMeta(path, { conflicts: true }, true);
-        if (!current || !current._rev) return MISSING_OR_ERROR;
+        if (!current || !current._rev) return fail("current revision unavailable");
         const revisions = [current._rev, ...(current._conflicts ?? [])];
         if (revisions.length < 2) return NOT_CONFLICTED;
 
@@ -52,7 +57,7 @@ export function createAutomaticRegionResolver(dependencies: AutomaticRegionDepen
                 return meta && body ? { meta, body, rev, data: getDocData(body.data), mtime: body.mtime } : false;
             })
         );
-        if (snapshots.some((snapshot) => snapshot === false)) return MISSING_OR_ERROR;
+        if (snapshots.some((snapshot) => snapshot === false)) return fail("input revision or local Chunks unavailable");
         const leaves = snapshots.filter((snapshot) => snapshot !== false);
         leaves.sort(compareVersions);
         // Resolve the two oldest branches first; never invent a fresh edit time.
@@ -91,19 +96,22 @@ export function createAutomaticRegionResolver(dependencies: AutomaticRegionDepen
             right: { rev: right.rev, mtime: right.mtime, deleted: deleted(right.body), data: right.data },
             result,
         });
+        // Commonlib's ensureDir creates the parent directories of a FILE path.
+        // Passing only the directory name silently creates nothing.
+        const backupPath = `${REGION_RECOVERY_DIRECTORY}/${name}.json`;
         if (
-            !(await dependencies.storageAccess.ensureDir(REGION_RECOVERY_DIRECTORY)) ||
-            !(await dependencies.storageAccess.writeHiddenFileAuto(`${REGION_RECOVERY_DIRECTORY}/${name}.json`, backup))
+            !(await dependencies.storageAccess.ensureDir(backupPath)) ||
+            !(await dependencies.storageAccess.writeHiddenFileAuto(backupPath, backup))
         ) {
-            return MISSING_OR_ERROR;
+            return fail("recovery copy could not be saved");
         }
 
         // Recheck the observed leaves; another writer may have advanced a branch
         // while the base or recovery copy was being read/written.
         const latest = await database.getDBEntryMeta(path, { conflicts: true }, true);
-        if (!latest) return MISSING_OR_ERROR;
+        if (!latest) return fail("current revision unavailable during recheck");
         const live = new Set([latest._rev, ...(latest._conflicts ?? [])]);
-        if (!live.has(left.rev) || !live.has(right.rev)) return MISSING_OR_ERROR;
+        if (!live.has(left.rev) || !live.has(right.rev)) return fail("input branches changed; retry after sync");
 
         if (!deleted(right.body) && result !== right.data) {
             const body = new Blob([result], { type: "text/plain" });
@@ -116,7 +124,7 @@ export function createAutomaticRegionResolver(dependencies: AutomaticRegionDepen
                 },
                 right.rev
             );
-            if (!stored) return MISSING_OR_ERROR;
+            if (!stored) return fail("merged revision could not be stored");
         }
         return await dependencies.resolveByDeletingRevision(path, left.rev, "Automatic region merge");
     };

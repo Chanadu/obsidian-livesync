@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { FileAccessBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import {
     AUTO_MERGED,
     MISSING_OR_ERROR,
@@ -49,6 +53,7 @@ function harness() {
         resolveByDeletingRevision: remove,
     } as AutomaticRegionDependencies;
     return {
+        dependencies,
         path,
         entries,
         store,
@@ -63,6 +68,44 @@ function harness() {
 }
 
 describe("automatic region resolution persistence", () => {
+    it("creates the recovery directory on a fresh filesystem using Commonlib's real directory API", async () => {
+        const root = await mkdtemp(join(tmpdir(), "region-recovery-"));
+        const h = harness();
+        const saved: string[] = [];
+        const fileAccess = {
+            adapter: { storage: { mkdir: (path: string) => mkdir(join(root, path)) } },
+            _log: vi.fn(),
+        };
+        const resolver = createAutomaticRegionResolver({
+            ...h.dependencies,
+            storageAccess: {
+                async ensureDir(path) {
+                    await FileAccessBase.prototype.ensureDirectory.call(fileAccess, path);
+                    return true;
+                },
+                async writeHiddenFileAuto(path, content) {
+                    try {
+                        await writeFile(join(root, path), content as string);
+                        saved.push(path);
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                },
+            },
+        });
+        try {
+            expect(await resolver(h.path)).toBe(AUTO_MERGED);
+            expect(saved).toHaveLength(1);
+            const backup = JSON.parse(await readFile(join(root, saved[0]), "utf8"));
+            expect(backup.left.data).toContain("Meet Wednesday");
+            expect(backup.right.data).toContain("Meet Thursday");
+            expect(h.remove).toHaveBeenCalledOnce();
+        } finally {
+            await rm(root, { recursive: true, force: true });
+        }
+    });
+
     it("backs up inputs, preserves independent text, and stores using original edit time and exact parent", async () => {
         const h = harness();
         expect(await h.resolve(h.path)).toBe(AUTO_MERGED);
