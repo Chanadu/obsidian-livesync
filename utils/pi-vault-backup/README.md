@@ -8,28 +8,23 @@ This job exports the existing CouchDB Vault into a fresh temporary directory and
 - Docker image `livesync-backup-cli` already built.
 - Working CLI settings at `~/livesync-backup-state/.livesync/settings.json`.
 - A clean Git checkout at `~/obsidian-vault-backup`, on `main`.
-- A dedicated SSH deploy key with write access to `Chanadu/obsidian-vault`.
+- A GitHub PAT with write access to `Chanadu/obsidian-vault`.
 
 ## Authentication
 
-As `pi`, create a dedicated key without an interactive passphrase for the unattended job. The existing key is never replaced:
+As `pi`, save the existing PAT using a hidden prompt:
 
 ```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-test -f ~/.ssh/obsidian-vault-backup || ssh-keygen -t ed25519 \
-  -f ~/.ssh/obsidian-vault-backup -C 'web-pi vault backup' -N ''
-cat ~/.ssh/obsidian-vault-backup.pub
+python3 utils/pi-vault-backup/save-pat.py
 ```
 
-Add only the public `.pub` text under the repository's **Settings → Deploy keys**, with **Allow write access** selected. The private file stays on the Pi, outside the Vault and Git checkout.
+The PAT is stored in `~/livesync-backup-state/github.pat`, outside the Vault and Git checkout. The file is plaintext with mode `600` in a private directory. Git needs access to it for unattended pushes. A fine-grained PAT requires access to this repository and Contents read/write permission. Renew it here if it expires. Do not put the token in the remote URL, a command argument, or a Vault note.
 
 ```bash
-ssh -i ~/.ssh/obsidian-vault-backup -o IdentitiesOnly=yes -T git@github.com
-git -C ~/obsidian-vault-backup remote set-url origin git@github.com:Chanadu/obsidian-vault.git
+git -C ~/obsidian-vault-backup remote set-url origin https://github.com/Chanadu/obsidian-vault.git
 ```
 
-On first connection, verify GitHub's published host-key fingerprint before accepting it. GitHub's successful SSH test normally exits with status 1 because it does not offer shell access. The job itself uses strict host verification and batch authentication.
+The job uses a dedicated Git askpass helper over HTTPS, with other credential helpers disabled for its Git commands. The helper only supplies the PAT for GitHub and the expected repository. It refuses insecure token-file permissions. It does not log the PAT or save it in Git configuration. An SSH key is not required.
 
 ## Installation and first run
 
@@ -41,7 +36,7 @@ sudo systemctl start obsidian-vault-backup.service
 sudo journalctl -u obsidian-vault-backup.service -n 50 --no-pager
 ```
 
-The installer copies the scripts into `~/.local/lib/obsidian-vault-backup/` and installs system-wide service and timer units. It does not enable the timer. The service runs as `pi`, with Docker-group access for that service. Files are created with a private umask. No PAT is stored by this job.
+The installer copies the scripts into `~/.local/lib/obsidian-vault-backup/` and installs system-wide service and timer units. It does not enable the timer. The service runs as `pi`, with Docker-group access for that service. Files are created with a private umask. Authentication uses the private PAT file created above.
 
 After the manual run succeeds:
 
@@ -81,4 +76,4 @@ bash -n utils/pi-vault-backup/backup.sh utils/pi-vault-backup/install.sh
 python3 -m unittest discover -s utils/pi-vault-backup -p 'test_*.py' -v
 ```
 
-Automated checks cover export validation and a local end-to-end Git/rsync harness. A real scheduled run against this Pi, CouchDB, and GitHub remains a deployment check, completed by the manual first run above.
+Automated checks cover export validation, a local end-to-end Git/rsync harness, and real Git credential requests against the PAT helper. A real scheduled run against this Pi, CouchDB, and GitHub remains a deployment check, completed by the manual first run above.

@@ -7,8 +7,12 @@ backup_home="${LIVESYNC_BACKUP_HOME:-$HOME}"
 backup_repo="$backup_home/obsidian-vault-backup"
 backup_state="$backup_home/livesync-backup-state"
 backup_tools="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-backup_key="$backup_home/.ssh/obsidian-vault-backup"
-export GIT_SSH_COMMAND="ssh -i $backup_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes"
+export LIVESYNC_BACKUP_PAT_FILE="$backup_state/github.pat"
+export GIT_ASKPASS="$backup_tools/git-askpass.py"
+# Override saved credential helpers so this job uses only its dedicated PAT.
+backup_git() {
+    git -c credential.helper= -c credential.useHttpPath=true -C "$backup_repo" "$@"
+}
 
 for backup_command in docker git rsync python3 flock timeout; do
     command -v "$backup_command" >/dev/null
@@ -21,16 +25,18 @@ if ! flock -n 9; then
 fi
 
 [[ -f "$backup_state/.livesync/settings.json" ]]
-[[ -f "$backup_key" ]]
-[[ "$(git -C "$backup_repo" rev-parse --show-toplevel)" == "$backup_repo" ]]
-[[ "$(git -C "$backup_repo" branch --show-current)" == main ]]
-[[ "$(git -C "$backup_repo" remote get-url origin)" == git@github.com:Chanadu/obsidian-vault.git ]]
-if [[ -n "$(git -C "$backup_repo" status --porcelain)" ]]; then
+python3 "$backup_tools/git-askpass.py" --check
+[[ "$(backup_git rev-parse --show-toplevel)" == "$backup_repo" ]]
+[[ "$(backup_git branch --show-current)" == main ]]
+backup_remote="$(backup_git config --get remote.origin.url)"
+[[ "$backup_remote" == https://github.com/Chanadu/obsidian-vault.git ||
+   "$backup_remote" == https://Chanadu@github.com/Chanadu/obsidian-vault.git ]]
+if [[ -n "$(backup_git status --porcelain)" ]]; then
     echo 'Backup checkout has uncommitted changes; leaving it untouched.' >&2
     exit 1
 fi
-git -C "$backup_repo" fetch origin main
-git -C "$backup_repo" merge --ff-only origin/main
+backup_git fetch origin main
+backup_git merge --ff-only origin/main
 
 backup_run="$(mktemp -d "$backup_state/jobs/run.XXXXXXXX")"
 trap 'rm -rf -- "$backup_run"' EXIT
@@ -59,15 +65,15 @@ rsync -rc --delete \
     --exclude='.gitignore' --exclude='.gitattributes' \
     "$backup_run/export/" "$backup_repo/"
 
-git -C "$backup_repo" add -A
-if ! git -C "$backup_repo" diff --cached --quiet; then
-    git -C "$backup_repo" -c user.name='Obsidian Pi Backup' \
+backup_git add -A
+if ! backup_git diff --cached --quiet; then
+    backup_git -c user.name='Obsidian Pi Backup' \
         -c user.email='Chanadu@users.noreply.github.com' \
         commit -m "Vault backup $(date -u +'%Y-%m-%d %H:%M UTC')"
 else
     echo 'No note changes to commit.'
 fi
 # Always push: this also retries a clean local commit whose earlier push failed.
-git -C "$backup_repo" push origin HEAD:main
+backup_git push origin HEAD:main
 date -u +'%Y-%m-%dT%H:%M:%SZ' >"$backup_state/last-success.txt"
 echo 'Vault backup finished successfully.'

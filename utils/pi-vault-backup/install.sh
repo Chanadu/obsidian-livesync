@@ -9,6 +9,7 @@ backup_install="$HOME/.local/lib/obsidian-vault-backup"
 mkdir -p "$backup_install"
 install -m 700 "$backup_source/backup.sh" "$backup_install/backup.sh"
 install -m 600 "$backup_source/verify.py" "$backup_install/verify.py"
+install -m 700 "$backup_source/git-askpass.py" "$backup_install/git-askpass.py"
 
 backup_units="$(mktemp -d)"
 trap 'rm -rf -- "$backup_units"' EXIT
@@ -44,4 +45,4 @@ EOF
 sudo install -m 644 "$backup_units/obsidian-vault-backup.service" /etc/systemd/system/
 sudo install -m 644 "$backup_units/obsidian-vault-backup.timer" /etc/systemd/system/
 sudo systemctl daemon-reload
-echo 'Installed. The timer is NOT enabled yet. Configure the SSH key and run one backup first.'
+echo 'Installed. Run save-pat.py if needed and test one backup before enabling the hourly timer.'

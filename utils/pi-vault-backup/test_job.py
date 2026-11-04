@@ -1,10 +1,11 @@
-"""Exercise the real backup script, Git, and rsync; emulate Docker and SSH transport."""
+"""Exercise the real backup script, Git, and rsync using a local Git remote and emulated Docker."""
 import os
 import fcntl
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import shutil
 
 
 class BackupJob(unittest.TestCase):
@@ -16,6 +17,7 @@ class BackupJob(unittest.TestCase):
         self.remote = self.root / 'remote.git'
         self.bin = self.root / 'bin'
         self.bin.mkdir()
+        real_git = shutil.which('git')
         self.env = dict(os.environ, LIVESYNC_BACKUP_HOME=str(self.root),
                         PATH=str(self.bin) + ':' + os.environ['PATH'], TEST_REMOTE=str(self.remote),
                         GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_SYSTEM='/dev/null')
@@ -27,21 +29,21 @@ class BackupJob(unittest.TestCase):
         self.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'Initial')
         self.git('remote', 'add', 'origin', str(self.remote))
         self.git('push', '-qu', 'origin', 'main')
-        self.git('remote', 'set-url', 'origin', 'git@github.com:Chanadu/obsidian-vault.git')
+        remote_url = 'https://github.com/Chanadu/obsidian-vault.git'
+        self.git('remote', 'set-url', 'origin', remote_url)
+        self.git('config', f'url.{self.remote.as_uri()}.insteadOf', remote_url)
         settings = self.root / 'livesync-backup-state/.livesync/settings.json'
         settings.parent.mkdir(parents=True)
         settings.write_text('{}')
-        key = self.root / '.ssh/obsidian-vault-backup'
-        key.parent.mkdir()
-        key.write_text('test transport only')
-        self.stub('ssh', '''#!/usr/bin/env python3
+        token = self.root / 'livesync-backup-state/github.pat'
+        token.write_text('github_pat_test_fixture_only\n')
+        token.chmod(0o600)
+        self.env['TEST_REAL_GIT'] = real_git
+        self.stub('git', '''#!/usr/bin/env python3
 import os, subprocess, sys
-operation = sys.argv[-1].split()[0]
-if operation not in ('git-upload-pack', 'git-receive-pack'):
-    sys.exit(2)
-if operation == 'git-receive-pack' and os.environ.get('TEST_FAIL_PUSH') == '1':
+if 'push' in sys.argv[1:] and os.environ.get('TEST_FAIL_PUSH') == '1':
     sys.exit(1)
-sys.exit(subprocess.run([operation, os.environ['TEST_REMOTE']]).returncode)
+sys.exit(subprocess.run([os.environ['TEST_REAL_GIT'], *sys.argv[1:]]).returncode)
 ''')
         self.stub('docker', '''#!/usr/bin/env python3
 import os, pathlib, sys
