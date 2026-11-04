@@ -50,6 +50,22 @@ Install `main.js`, `manifest.json`, and `styles.css` into `<test-vault>/.obsidia
 
 For iOS distribution, publish those three files as release assets on your fork, then install the fork through a compatible custom plug-in installer. The release upload and iOS installation are separate from a successful local build; no release is published automatically by these instructions. Do not install an upstream release asset accidentally.
 
+## Automatic releases on this fork
+
+Push a new version tag such as `1.0.44-chanadu.3` to `Chanadu/obsidian-livesync` to build and publish its GitHub prerelease automatically. The tagged commit must contain the matching package versions, `manifest.json`, `versions.json`, and a dated release section in `updates.md`. Prepare these with the existing version and release-note scripts before tagging:
+
+```bash
+npm version 1.0.44-chanadu.4 --no-git-tag-version
+node utils/release-notes.mjs prepare 1.0.44-chanadu.4
+# Review and commit the version metadata and release notes, then:
+git tag 1.0.44-chanadu.4
+git push origin HEAD refs/tags/1.0.44-chanadu.4
+```
+
+The `Publish Chanadu Plug-in Release` workflow validates the tag, plug-in identity, and release metadata, runs focused tests, builds the bundle, checks compatibility, and uploads `main.js`, `manifest.json`, and `styles.css`. It publishes only personal fork prereleases, without changing the latest stable release or publishing CLI images. Tag pushes run the workflow from the tagged commit; this does not require the workflow on the default branch. Existing upstream manual release workflows remain available. For this fork, the tag-triggered workflow is the publication route instead of the upstream manual finalisation process. Never move a published tag; prepare a new version for a correction.
+
+In BRAT, select the new version if the plug-in was installed with a specific version. A pinned older version will not advance automatically. Verify installation, start-up, and bidirectional synchronisation on your devices after updating; publication alone does not establish those checks.
+
 ## Raspberry Pi and the existing Funnel
 
 First inspect the Pi without changing it:
