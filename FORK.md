@@ -25,6 +25,8 @@ Keep Hidden File Sync and Customisation Sync disabled for the initial setup. If 
 
 ## Limits and validation
 
+Version `1.0.44-chanadu.3` prevents the legacy integrity scan from treating pending note edits or ordinary conflicts as database corruption when the recorded and stored database sizes agree. This update does not enable automatic synchronisation if Sync Mode is disabled. Focused tests cover shorter and longer Vault edits, healthy conflicts, and the retained repair rules for inconsistent database content; real-device update validation remains outstanding.
+
 Version `1.0.44-chanadu.2` fixes recovery-directory creation on fresh Vaults. Earlier builds can leave an otherwise readable conflict unresolved because the recovery file cannot be written. Update the fork, or create `.livesync-region-recovery` directly inside the Vault before retrying the conflict check. The regression test exercises Commonlib's actual directory helper against a temporary filesystem; it does not claim full Obsidian or iOS coverage.
 
 The supported development target is two personal devices: desktop and iOS. The token merge is syntactic; it does not understand Markdown meaning, YAML validity, or the intended meaning of a sentence. Device clock errors can select the wrong text. JSON, Canvas, binary attachments, and settings do not receive token-level merging.
