@@ -14,6 +14,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+- Read-only snapshots reject unresolved conflicts even when the winning Metadata records a logical deletion, preventing a live conflict branch from being omitted silently. The remote branches remain unchanged for review.
+- Snapshot freshness checks now detect tombstoned local history, and normal database entries are reconstructed from their observed Metadata without applying filesystem-watcher filters.
+- The combined Pi installer requires a newly written backup-success marker before reporting that the manual backup completed; a skipped service invocation no longer counts as verification.
+
 - Read-only Pi snapshots no longer leave PouchDB task-progress requests pending when the owned remote connection closes. Progress counters reuse the opening database information; document and Chunk downloads still read the remote, without writing checkpoints or device registrations.
 
 - Hourly Pi backups now use a read-only CLI `snapshot` export instead of `fetch --force`, preventing each backup from registering another headless device or changing remote administration metadata. Update the backup image and installed script together; existing registrations require manual removal after stopping the old job.

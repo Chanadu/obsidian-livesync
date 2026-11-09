@@ -12,6 +12,8 @@ import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/rep
 import {
     MILESTONE_DOCID,
     type EntryDoc,
+    type DocumentID,
+    type CustomRegExpSourceList,
     type FilePathWithPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
@@ -185,12 +187,100 @@ describe("CLI snapshot with real local databases and file decoding", () => {
         expect(standardIo.writeStderr.mock.calls.flat().map(String).join(" ")).toContain("unresolved note conflicts");
     });
 
+    it("rejects a logical-deletion winner with a live conflict branch", async () => {
+        await seed();
+        const doc = (await source.allDocs({ include_docs: true })).rows.find(
+            (row) => (row.doc as { path?: string })?.path === "notes/café.md"
+        )!.doc!;
+        const parent = doc._rev!.split("-")[1];
+        await source.bulkDocs(
+            [
+                { ...doc, deleted: false, _rev: "2-aaaa", _revisions: { start: 2, ids: ["aaaa", parent] } },
+                { ...doc, deleted: true, _rev: "2-ffff", _revisions: { start: 2, ids: ["ffff", parent] } },
+            ],
+            { new_edits: false }
+        );
+        expect(await source.get(doc._id, { conflicts: true })).toMatchObject({ deleted: true, _conflicts: ["2-aaaa"] });
+        const before = await source.info();
+        connect();
+        await start("deleted-conflict", "snapshot", runCommand, 1);
+        expect(standardIo.writeStderr.mock.calls.flat().map(String).join(" ")).toContain("unresolved note conflicts");
+        expect((await source.info()).update_seq).toBe(before.update_seq);
+        expect(await source.get(doc._id, { rev: "2-aaaa" })).toMatchObject({ deleted: false });
+    });
+
+    it("exports normal Metadata entries independently of filesystem target filters", async () => {
+        await seed();
+        const doc = (await source.allDocs({ include_docs: true })).rows.find(
+            (row) => (row.doc as { path?: string })?.path === "notes/café.md"
+        )!.doc!;
+        if (doc.type !== "plain") throw new Error("The fixture must be a normal text entry.");
+        const { _rev: _originalRevision, ...normal } = doc;
+        await source.put({
+            ...normal,
+            _id: ".hidden-note.md" as DocumentID,
+            path: ".hidden-note.md" as FilePathWithPrefix,
+        });
+        connect();
+        const policy = {
+            syncInternalFiles: false,
+            syncOnlyRegEx: "^elsewhere/" as CustomRegExpSourceList<"|[]|">,
+            syncIgnoreRegEx: "notes" as CustomRegExpSourceList<"|[]|">,
+        };
+        const vault = await start("hidden-normal", "snapshot", async (options, context) => {
+            await context.core.services.setting.applyPartial(policy, true);
+            const result = await runCommand(options, context);
+            expect(context.core.services.setting.currentSettings()).toMatchObject(policy);
+            return result;
+        });
+        expect(await readFile(join(vault, ".hidden-note.md"), "utf8")).toBe(text);
+    });
+
+    it("rejects a local database containing only tombstoned note history", async () => {
+        await seed();
+        const doc = (await source.allDocs({ include_docs: true })).rows.find(
+            (row) => (row.doc as { path?: string })?.path === "notes/café.md"
+        )!.doc!;
+        const { opening } = connect();
+        await start(
+            "tombstoned-state",
+            "snapshot",
+            async (options, context) => {
+                const local = context.core.services.database.localDatabase.localDatabase;
+                await local.bulkDocs([doc], { new_edits: false });
+                await local.remove(doc._id, doc._rev!);
+                expect((await local.allDocs()).rows).toHaveLength(0);
+                return await runCommand(options, context);
+            },
+            1
+        );
+        expect(opening).not.toHaveBeenCalled();
+        expect(standardIo.writeStderr.mock.calls.flat().map(String).join(" ")).toContain("fresh local database");
+    });
+
     it("fails on missing Chunks and leaves an existing Vault untouched", async () => {
         await seed();
         const chunk = (await source.allDocs()).rows.find((row) => row.id.startsWith("h:"))!;
         await source.remove(chunk.id, chunk.value.rev);
         connect();
-        await start("missing", "snapshot", runCommand, 1);
+        const policy = {
+            syncInternalFiles: false,
+            syncOnlyRegEx: "^notes/" as CustomRegExpSourceList<"|[]|">,
+            syncIgnoreRegEx: "ignored" as CustomRegExpSourceList<"|[]|">,
+        };
+        await start(
+            "missing",
+            "snapshot",
+            async (options, context) => {
+                await context.core.services.setting.applyPartial(policy, true);
+                try {
+                    return await runCommand(options, context);
+                } finally {
+                    expect(context.core.services.setting.currentSettings()).toMatchObject(policy);
+                }
+            },
+            1
+        );
         expect(standardIo.writeStderr.mock.calls.flat().map(String).join(" ")).toContain(
             "Snapshot content is unavailable"
         );

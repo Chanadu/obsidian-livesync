@@ -43,7 +43,7 @@ The installer copies the scripts, including the server-device cleanup helper, in
 
 For a supplied `livesync-backup-fix` bundle, run `bash backup-tools/install-snapshot-fix.sh` from its extracted directory instead of rebuilding the repository. This builds a separate image on top of the existing Pi image, retaining its native dependencies and replacing the JavaScript bundle. The old image is retained, and the timer stays stopped. This path requires the previously configured `livesync-backup-cli` image. The installer checks that the new image starts and provides both `snapshot` and `forget-servers`; the manual backup below remains necessary to verify this Pi's connection, encryption, and export.
 
-If server-device removal is intended as well, `bash backup-tools/install-and-cleanup.sh` installs the fix, removes the `server` records with `--force`, and runs one manual backup. It leaves the hourly timer stopped and prints the backup log, including when the test backup fails. This combined command makes the registry changes described below; use the separate preview command first when reviewing the selected records is needed.
+If server-device removal is intended as well, `bash backup-tools/install-and-cleanup.sh` installs the fix, removes the `server` records with `--force`, and runs one manual backup. It leaves the hourly timer stopped and prints the backup log, including when the test backup fails. It requires a fresh `last-success.txt` marker, so an invocation skipped because another backup holds the lock does not count as a verified backup. This combined command makes the registry changes described below; use the separate preview command first when reviewing the selected records is needed.
 
 To remove accumulated headless backup registrations after installing the new image:
 
@@ -66,12 +66,14 @@ The timer runs hourly, with up to two minutes of jitter. `Persistent=true` cause
 ## Protections and limits
 
 - Start only with a clean checkout on `main`, and fetch/fast-forward without rebasing or force-pushing.
-- Seed a fresh local database from a private copy of the CLI settings for every snapshot. The CLI refuses an existing non-empty local database or export directory. Failed or stale local state cannot masquerade as a fresh export.
-- Check exported paths and byte sizes against the CLI database listing. Reject missing files, empty snapshots, symbolic links, unresolved conflicts, and unexpected files before rsync changes the checkout.
+- Seed a fresh local database from a private copy of the CLI settings for every snapshot. The CLI refuses an existing local database with document history, including tombstones, or a non-empty export directory. Failed or stale local state cannot masquerade as a fresh export.
+- Check exported paths and byte sizes against the CLI database listing. Reject missing files, empty snapshots, symbolic links, unresolved conflicts (including logical-deletion winners), and unexpected files before rsync changes the checkout.
 - Stop if more than the larger of 20 paths or one quarter of existing tracked paths would disappear. Many deliberate moves can also trigger this guard; review those manually instead of silently bypassing it.
 - Exclude `.git`, `.obsidian`, `.livesync`, `.livesync-region-recovery`, `.env*`, `.gitignore`, and `.gitattributes` from export copying. Notes containing secrets are still notes; do not store credentials in the Vault.
 - Commit only when content changes, but always attempt a push so a previous failed push can be retried.
 - Preserve old Git history; never force-push. A failed post-copy step can leave a dirty checkout, which intentionally blocks later runs until reviewed. A completed local commit whose push failed is retried normally.
+
+The snapshot exports all normal-file Metadata already stored in CouchDB, independently of current sync path filters. The exclusions above still apply when copying into Git; Hidden File Sync and Customisation Sync records are not exported.
 
 This is a periodic backup, not an atomic distributed snapshot. Desktop and phone changes which have not reached CouchDB are not included. The CLI export uses the installed version's file-selection and encryption rules. The manifest verifies file presence and size; it is not a second independent cryptographic verification of remote contents.
 
