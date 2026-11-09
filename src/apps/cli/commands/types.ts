@@ -24,6 +24,8 @@ export type CLICommand =
     | "mirror"
     | "rebuild"
     | "fetch"
+    | "snapshot"
+    | "forget-servers"
     | "remote-add"
     | "remote-rm"
     | "remote-ls"
@@ -104,6 +106,8 @@ export const VALID_COMMANDS = new Set([
     "mirror",
     "rebuild",
     "fetch",
+    "snapshot",
+    "forget-servers",
     "remote-add",
     "remote-rm",
     "remote-ls",

@@ -28,6 +28,8 @@ import {
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { snapshotRemote } from "./snapshot";
+import { forgetServerDevices } from "./forgetServerDevices";
 import {
     isCentralRemoteAdministrationCommand,
     runCentralRemoteAdministrationCommand,
@@ -60,6 +62,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     const vaultPath = context.vaultPath || databasePath;
 
     await core.services.control.activated;
+    if (options.command === "snapshot") return await snapshotRemote(context);
+    if (options.command === "forget-servers") return await forgetServerDevices(options, context);
     if (options.command === "daemon") {
         const log = (msg: unknown) => writeStderrLine(standardIo, `[Daemon] ${String(msg)}`);
 

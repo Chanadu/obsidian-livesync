@@ -10,6 +10,7 @@ mkdir -p "$backup_install"
 install -m 700 "$backup_source/backup.sh" "$backup_install/backup.sh"
 install -m 600 "$backup_source/verify.py" "$backup_install/verify.py"
 install -m 700 "$backup_source/git-askpass.py" "$backup_install/git-askpass.py"
+install -m 700 "$backup_source/cleanup-server-devices.sh" "$backup_install/cleanup-server-devices.sh"
 
 backup_units="$(mktemp -d)"
 trap 'rm -rf -- "$backup_units"' EXIT

@@ -13,6 +13,7 @@ import { InjectableFileProcessingService } from "@vrtmrz/livesync-commonlib/comp
 import { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import { PathServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectablePathService";
 import { InjectableRemoteService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableRemoteService";
+import { ReadOnlyRemoteService } from "./ReadOnlyRemoteService";
 import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicationService";
 import { InjectableReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicatorService";
 import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTestService";
@@ -105,7 +106,7 @@ class NodeSettingService<T extends NodeServiceContext> extends InjectableSetting
 }
 
 export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServiceHub<T> {
-    constructor(basePath: string, context: T) {
+    constructor(basePath: string, context: T, options: { readOnlyRemote?: boolean } = {}) {
         const runtimeDir = nodePath.join(basePath, ".livesync", "runtime");
         const localStoragePath = nodePath.join(runtimeDir, "local-storage.json");
 
@@ -123,7 +124,8 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             settingService: setting,
         });
 
-        const remote = new InjectableRemoteService(context, {
+        const RemoteService = options.readOnlyRemote ? ReadOnlyRemoteService : InjectableRemoteService;
+        const remote = new RemoteService(context, {
             pouchDB: PouchDB,
             APIService: API,
             appLifecycle,

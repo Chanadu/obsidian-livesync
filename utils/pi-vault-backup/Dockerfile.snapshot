@@ -1,0 +1,3 @@
+# Reuse the Pi's existing Node runtime and native dependencies; replace only JavaScript.
+FROM livesync-backup-cli
+COPY cli-dist/ /app/dist/

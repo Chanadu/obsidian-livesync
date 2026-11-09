@@ -10,6 +10,8 @@ import {
     AutoAccepting,
     REMOTE_COUCHDB,
     REMOTE_P2P,
+    NODEINFO_DOCID,
+    type EntryNodeInfo,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -101,6 +103,41 @@ describe("CLI database preparation", () => {
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
+
+    it("prepares a fresh local identity for device cleanup without starting replication", async () => {
+        await writeFile(
+            settingsPath,
+            JSON.stringify({
+                ...createDefaultCliSettings(),
+                isConfigured: true,
+                couchDB_URI: "http://127.0.0.1:5999",
+                couchDB_DBNAME: "cleanup-test",
+                couchDB_USER: "test",
+                couchDB_PASSWORD: "test",
+            })
+        );
+        const resource = {
+            read: vi.fn(async () => ({ milestonePresent: true, locked: true, cleaned: false, devices: [] })),
+            forget: vi.fn(),
+            dispose: vi.fn(async () => undefined),
+        };
+        await start(
+            "forget-servers",
+            async (options, context) => {
+                const info =
+                    await context.core.services.database.localDatabase.localDatabase.get<EntryNodeInfo>(NODEINFO_DOCID);
+                expect(info.nodeid).toBeTruthy();
+                const replicate = vi.spyOn(context.core.services.replication, "replicateUnattended");
+                vi.spyOn(context.core.services.replicator, "createRemoteResource").mockResolvedValue(resource);
+                expect(await runCommand(options, context)).toBe(true);
+                expect(replicate).not.toHaveBeenCalled();
+                return true;
+            },
+            0
+        );
+        expect(resource.forget).not.toHaveBeenCalled();
+        expect(resource.dispose).toHaveBeenCalledOnce();
+    });
 
     it.each([
         { separator: "/", platform: "POSIX" },

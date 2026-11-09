@@ -53,7 +53,7 @@ if args[0] == 'rm':
 mounts = [args[i+1] for i, value in enumerate(args[:-1]) if value == '-v']
 export = pathlib.Path(next(value[:-8] for value in mounts if value.endswith(':/export')))
 scenario = os.environ.get('TEST_SCENARIO', 'ok')
-if 'fetch' in args:
+if 'snapshot' in args:
     if scenario == 'failed':
         sys.exit(1)
     (export / 'a.md').write_text('new')

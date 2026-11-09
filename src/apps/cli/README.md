@@ -670,6 +670,19 @@ Changes to this file require a daemon restart to take effect.
 
 - `--immediate`: Perform sync after the command (e.g. `push`, `pull`, `put`, `rm`).
 - `serve`: Start CLI in server mode, exposing REST APIs for remote, and batch operations.
+
+### Read-only CouchDB backup
+
+Use `snapshot` with a fresh local database directory and an empty, separate export directory:
+
+```bash
+mkdir -p /tmp/vault-snapshot/db /tmp/vault-snapshot/export
+livesync-cli /tmp/vault-snapshot/db --settings /private/settings.json --vault /tmp/vault-snapshot/export snapshot
+```
+
+The command downloads documents and Chunks, then exports decoded files. It does not negotiate device membership, mark a device as accepted, change the remote lock, or write replication checkpoints to the remote. Its HTTP boundary rejects remote writes. Existing local documents, non-empty export directories, missing Chunks, size mismatches, and unresolved note conflicts stop the command. Partial exports must be discarded, and a new attempt requires fresh directories. The command supports CouchDB only, and does not repair missing remote synchronisation parameters. Verify the export before replacing an existing backup; `utils/pi-vault-backup` provides a manifest and deletion guard for the hourly Pi job.
+
+To preview accumulated headless registrations, run `livesync-cli <database-path> forget-servers`. Add `--force` to remove the displayed `server` records. Other platforms, records with no platform, and the current local device are preserved. This edits joined-device metadata through the provider-owned removal operation; it does not delete notes, revoke credentials, or unlock the remote. Stop the old backup process before cleanup, otherwise it can register another device. The Pi cleanup script above provides a temporary local database and stops the old timer before performing this command.
 - `cause-conflicted <vaultPath>`: Mark a file as conflicted without changing its content, to trigger conflict resolution in Obsidian.
 
 ## Use Cases

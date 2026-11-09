@@ -112,6 +112,8 @@ Commands:
     p2p-host                Start P2P host mode and wait until interrupted
     rebuild                 Rebuild local and remote databases from the selected Vault (requires --force)
     fetch                   Replace the local database with remote state and reflect it to the Vault (requires --force)
+    snapshot                Export CouchDB to an empty --vault directory without remote writes (fresh local database required)
+    forget-servers          Preview server device records; add --force to remove them, preserving other platforms
     push <src> <dst>        Push local file <src> into local database path <dst>
     pull <src> <dst>        Pull file <src> from local database into local file <dst>
     pull-rev <src> <dst> <rev>   Pull file <src> at specific revision <rev> into local file <dst>
@@ -144,7 +146,7 @@ Commands:
                             Show remote database status
 
 Options:
-  --vault <path>, -V <path>  (daemon/mirror/rebuild/fetch) Path to the vault directory containing .md files
+  --vault <path>, -V <path>  (daemon/mirror/rebuild/fetch/snapshot) Path to the vault directory
                               (defaults to database-path; allows separate PouchDB and vault dirs)
   --force, -f             Required for rebuild and fetch because they replace databases
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
@@ -458,7 +460,9 @@ export async function main(
 
     // Create service context and hub
     const context = new NodeServiceContext(databasePath, standardIo, vaultPath);
-    const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
+    const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context, {
+        readOnlyRemote: options.command === "snapshot",
+    });
     serviceHubInstance.API.addLog.setHandler((message: unknown, level: LOG_LEVEL) => {
         let levelStr = "";
         switch (level) {
