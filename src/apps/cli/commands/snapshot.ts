@@ -1,10 +1,31 @@
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import { REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    LiveSyncCouchDBReplicator,
+    type OwnedCouchDBConnection,
+} from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { REMOTE_COUCHDB, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createBlob, readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { CLICommandContext } from "./types";
 import { ReadOnlyRemoteService } from "@/apps/cli/services/ReadOnlyRemoteService";
+
+/** Bind data operations to the owned handle while keeping task-progress reads local. */
+function snapshotReplicationSource(
+    connection: OwnedCouchDBConnection<EntryDoc>
+): OwnedCouchDBConnection<EntryDoc>["db"] {
+    // PouchDB 9 starts an unawaited source.info() after each replication batch.
+    // Its completion event can precede those reads, so closing the HTTP handle
+    // would abort them and reject a promise outside the replication result.
+    // Only the task counters need info(); the changes feed still reads the remote.
+    const info = async () => ({ ...connection.info });
+    return new Proxy(connection.db, {
+        get(target, key) {
+            if (key === "info") return info;
+            const value = Reflect.get(target, key, target) as unknown;
+            return typeof value === "function" ? (value.bind(target) as unknown) : value;
+        },
+    });
+}
 
 /** Download into a disposable database without negotiating membership or writing remote checkpoints. */
 export async function snapshotRemote(context: CLICommandContext): Promise<boolean> {
@@ -27,7 +48,7 @@ export async function snapshotRemote(context: CLICommandContext): Promise<boolea
         const connection = await replicator.connectRemoteCouchDBWithSetting(settings, false, false);
         if (typeof connection === "string") throw new Error("Could not open the snapshot connection.");
         try {
-            const result = await database.localDatabase.replicate.from(connection.db, {
+            const result = await database.localDatabase.replicate.from(snapshotReplicationSource(connection), {
                 checkpoint: false,
                 live: false,
                 retry: false,

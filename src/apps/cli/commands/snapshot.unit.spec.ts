@@ -131,6 +131,36 @@ describe("CLI snapshot with real local databases and file decoding", () => {
         expect(close).toHaveBeenCalledTimes(2);
     });
 
+    it("does not leave progress information requests pending when closing the connection", async () => {
+        await seed();
+        const info = await source.info();
+        let infoReads = 0;
+        let pendingReads = 0;
+        const releases: Array<() => void> = [];
+        vi.spyOn(source, "info").mockImplementation(async () => {
+            infoReads++;
+            if (infoReads > 2) {
+                pendingReads++;
+                await new Promise<void>((resolve) => releases.push(resolve));
+                pendingReads--;
+            }
+            return info;
+        });
+        const { close } = connect();
+        close.mockImplementation(async () => {
+            if (pendingReads) throw new Error("Connection closed with pending progress requests");
+        });
+        try {
+            const vault = await start("slow-progress", "snapshot");
+            expect(await readFile(join(vault, "notes/café.md"), "utf8")).toBe(text);
+            expect(infoReads).toBe(1);
+            expect(close).toHaveBeenCalledOnce();
+        } finally {
+            for (const release of releases) release();
+            await new Promise<void>((resolve) => setImmediate(resolve));
+        }
+    });
+
     it("refuses to reuse old local state", async () => {
         await seed();
         const { opening } = connect();

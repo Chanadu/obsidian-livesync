@@ -14,6 +14,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+- Read-only Pi snapshots no longer leave PouchDB task-progress requests pending when the owned remote connection closes. Progress counters reuse the opening database information; document and Chunk downloads still read the remote, without writing checkpoints or device registrations.
+
 - Hourly Pi backups now use a read-only CLI `snapshot` export instead of `fetch --force`, preventing each backup from registering another headless device or changing remote administration metadata. Update the backup image and installed script together; existing registrations require manual removal after stopping the old job.
     - The CLI `forget-servers` command previews headless registrations, or removes them with `--force`, preserving other platforms and the current device. The Pi cleanup helper stops the old backup job before removal.
 - Editing a note no longer triggers the legacy broken-file repair dialogue merely because the Vault file differs in size from a consistent database copy. Ordinary synchronisation and conflict resolution continue to handle those differences.
